@@ -26,17 +26,74 @@ class CamApp(App):
 
     def build(self):
         #Main layout 
-        self.img1 = Image(size_hint=(1,.8))
-        self.button = Button(text="Verify", size_hint=(1,.1))
-        self.verification = Label(text="Verification Uninitialized",  size_hint=(1,.1))
+        self.web_cam = Image(size_hint=(1,.8))
+        self.button = Button(text="Verify", on_press=self.verify, size_hint=(1,.1))
+        self.verification_text = Label(text="Verification Uninitialized",  size_hint=(1,.1))
 
         # add items to layout 
         layout = BoxLayout(orientation='vertical')
-        layout.add_widget(self.img1)
+        layout.add_widget(self.web_cam)
         layout.add_widget(self.button)
-        layout.add_widget(self.verification)
+        layout.add_widget(self.verification_text)
+
+        # load keras model ( s-NN )
+        self.model = tf.keras.models.load_model('siamesemodel.h5', custom_objects={ 'L1Dist':L1Dist })
+
+        # setup video capture device
+        self.capture = cv2.VideoCapture(0)
+        Clock.schedule_interval(self.update, 1.0/33.0)
 
         return layout
+    #Run continously to get webcam feed
+    def update(self, *args): 
+        # Read frame from opencv 
+        ret, frame = self.capture.read() 
+        frame = frame[120:120+250,200:200+250 ,:]
 
+        # Flip horizontal & canvert image to texture 
+        buf = cv2.flip(frame, 0).tostring()
+        img_texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
+        img_texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
+        self.web_cam.texture = img_texture
+
+    # load image from file and convert to 100x100px 
+    def preprocess (self, file_path): 
+        byte_img = tf.io.read_file(file_path)
+        img = tf.io.decode_jpeg(byte_img)
+        img = tf.image.resize(img, (100,100))
+        img = img / 255.0
+        return img
+
+    #Bring over verification function to verify the person
+    def verify(self, *args):
+        # the thresholds
+        detection_threshold = 0.5
+        verification_threshold = 0.5
+
+        # capture input image from webcam 
+        save_path = os.path.join('application_data','input_image','input_image.jpg')
+        ret, frame = self.capture.read() 
+        frame = frame[120:120+250,200:200+250 ,:]
+        cv2.imwrite(save_path, frame)
+
+        #build result array 
+        results = []
+        for image in os.listdir(os.path.join('application_data','verification_images')):
+            input_img = self.preprocess(os.path.join('application_data','input_image','input_image.jpg'))
+            validation_img = self.preprocess(os.path.join('application_data','verification_images',image))
+
+            result = self.model.predict(list(np.expand_dims([input_img, validation_img],axis=1)))
+            results.append(result)
+    
+        detection = np.sum(np.array(results)> detection_threshold)
+        verification = detection / len(os.listdir(os.path.join('application_data','verification_images')))
+        verified = verification > verification_threshold
+
+        # set verification text 
+        self.verification_text.text = 'Verified' if verification == True else 'UnVerified'
+        
+        return results, verified
+
+    
 if __name__ == '__main__':
     CamApp().run()
