@@ -67,8 +67,8 @@ class CamApp(App):
     #Bring over verification function to verify the person
     def verify(self, *args):
         # the thresholds
-        detection_threshold = 0.5
-        verification_threshold = 0.5
+        detection_threshold = 0.8
+        verification_threshold = 0.7
 
         # capture input image from webcam 
         save_path = os.path.join('application_data','input_image','input_image.jpg')
@@ -90,8 +90,18 @@ class CamApp(App):
         verified = verification > verification_threshold
 
         # set verification text 
-        self.verification_text.text = 'Verified' if verification == True else 'UnVerified'
-        
+        self.verification_text.text = 'Verified' if verified == True else 'UnVerified'
+
+        # log out details 
+        Logger.info(results)
+        Logger.info(verification)
+        Logger.info(verified)
+        Logger.info("IMAGE PASSED ->")
+        Logger.info(np.sum(np.array(results) > 0.4))
+        Logger.info(np.sum(np.array(results) > 0.5))
+        Logger.info(np.sum(np.array(results) > 0.8))
+        Logger.info(np.sum(np.array(results) > 0.9))
+
         return results, verified
 
     
