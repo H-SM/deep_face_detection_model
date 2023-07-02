@@ -1,3 +1,5 @@
 training_checkpoints
 dependencies.txt
 siamesemodel.h5
+training_checkpointsv2
+siamesemodelv2.h5
