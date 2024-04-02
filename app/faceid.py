@@ -40,7 +40,7 @@ class CamApp(App):
         self.model = tf.keras.models.load_model('siamesemodelv2.h5', custom_objects={ 'L1Dist':L1Dist })
 
         # setup video capture device
-        self.capture = cv2.VideoCapture(0)
+        self.capture = cv2.VideoCapture(1)
         Clock.schedule_interval(self.update, 1.0/33.0)
 
         return layout
